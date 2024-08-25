@@ -1,1 +1,11 @@
-public class id {  public static void main ( String [ ] id ) {  } }
+public class teste { public static void main ( String [] teste ) {
+	System.out.println(120);
+ } 
+	public static double metodoTeste (double param) {
+	double a;
+	double b;
+	if(a == b){a = b+ 10}
+	else { System.out.println(a); }
+return a;
+}
+}
