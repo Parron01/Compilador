@@ -6,7 +6,7 @@ with open('codigo.txt', 'r') as arquivo:
 patterns = [
     (r'[ \n\t\r\f]+', None),  # Espaços em branco e quebras de linha
     (r'\b\d+[a-zA-Z_]+\b', 'ERRO LEXICO'),  # Erros léxicos
-    (r'\b(public|class|static|void|main|String|double|if|else|while|return|System\.out\.println|lerDouble)\b', 'Palavras Reservadas'),  # Palavras reservadas
+    (r'(public|class|static|void|main|String|double|if|else|while|return|System\.out\.println|lerDouble\(\))', 'Palavras Reservadas'),  # Palavras reservadas
     (r'\b\d+(\.\d+)?\b', 'Numeral'),  # Números inteiros e reais
     (r'\b[a-zA-Z_][0-9a-zA-Z_]*\b', 'Identificador'),  # Identificadores
     (r'(==|!=|>=|<=|=|>|<|\+|\-|\*|\/|\!|\.)', 'Operador'),  # Operadores
