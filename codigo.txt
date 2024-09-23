@@ -1,11 +1,22 @@
-public class teste { public static void main ( String [] teste ) {
-	System.out.println(120);
- } 
-	public static double metodoTeste (double param) {
-	double a;
-	double b;
-	if(a == b){a = b+ 10}
-	else { System.out.println(a); }
-return a;
-}
+public class Teste {
+    public static void main(String[] args) {
+        somar();
+    }
+    public static double somar(){
+        double cont;
+        double a,b,c;
+        cont = 10;
+        while(cont > 0) {
+            a = lerDouble();
+            b = lerDouble();
+            if (a > b) {
+                c = a - b;
+            } else {
+                c = b - a;
+            }
+            System.out.println(c);
+            cont = cont - 1;
+        }
+        return c;
+    }
 }
