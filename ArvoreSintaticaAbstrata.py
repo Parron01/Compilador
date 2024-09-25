@@ -147,6 +147,8 @@ class BinaryOperationNode(ExpressionNode):
             'operator': self.operator,
             'right': self.right.to_dict()
         }
+    def __str__(self):
+        return f'({self.left} {self.operator} {self.right})'
 
 
 class UnaryOperationNode(ExpressionNode):
@@ -173,6 +175,8 @@ class VariableNode(ExpressionNode):
             'type': 'VariableNode',
             'var_name': self.var_name  # Nome real do identificador
         }
+    def __str__(self):
+        return self.var_name
 
 
 class NumberNode(ExpressionNode):
@@ -185,6 +189,8 @@ class NumberNode(ExpressionNode):
             'type': 'NumberNode',
             'value': self.value
         }
+    def __str__(self):
+        return str(self.value)
 
 class ReturnNode(CommandNode):
     """Representa o comando de retorno de uma expressão."""
@@ -211,6 +217,8 @@ class ConditionNode(ExpressionNode):
             'operator': self.operator,
             'right': self.right.to_dict()
         }
+    def __str__(self):
+        return f'({self.left} {self.operator} {self.right})'
 
 # Novas classes
 
@@ -250,6 +258,9 @@ class FunctionCallNode(ExpressionNode):
             'function_name': self.function_name,
             'arguments': [arg.to_dict() for arg in self.arguments if arg is not None]
         }
+    def __str__(self):
+        args_str = ', '.join(str(arg) for arg in self.arguments)
+        return f"{self.function_name}({args_str})"
 
 def carregar_ast(filename='ast_output.pickle'):
     """Carrega a AST de um arquivo binário utilizando pickle."""

@@ -378,13 +378,21 @@ class Parser:
             return PrintNode(expression)  # Criação do nó 'PrintNode'
 
         elif token_type == 'id':
-            var_name = self.match('id')  # Captura o identificador
-            resto_node = self.parse_RESTO_IDENT()
-            # Decide se é uma atribuição ou uma chamada de função com base em 'resto_node'
-            if isinstance(resto_node, FunctionCallNode):
-                return resto_node  # Retorna o nó de chamada de função
+            var_name = self.match('id')
+            next_token_type, next_token_value = self.token_atual
+            if next_token_value == '=':
+                self.match('=')
+                expr_node = self.parse_EXP_IDENT()
+                self.match(';')
+                return AssignmentNode(var_name, expr_node)
+            elif next_token_value == '(':
+                self.match('(')
+                arguments = self.parse_LISTA_ARG()
+                self.match(')')
+                self.match(';')
+                return FunctionCallNode(var_name, arguments)
             else:
-                return AssignmentNode(var_name, resto_node)  # Retorna o nó de atribuição
+                self.error(f"Erro de sintaxe em CMD: esperado '=' ou '(', mas encontrado '{next_token_value}'")
         
         else:
             self.error("Erro de sintaxe em CMD")
