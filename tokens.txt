@@ -37,7 +37,7 @@
 [Pontuacao, ;]
 [Identificador, cont]
 [Operador, =]
-[Numeral, 10]
+[Numeral, 2]
 [Pontuacao, ;]
 [Palavras Reservadas, while]
 [Pontuacao, (]

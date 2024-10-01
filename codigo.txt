@@ -5,7 +5,7 @@ public class Teste {
     public static double somar(){
         double cont;
         double a,b,c;
-        cont = 10;
+        cont = 2;
         while(cont > 0) {
             a = lerDouble();
             b = lerDouble();
