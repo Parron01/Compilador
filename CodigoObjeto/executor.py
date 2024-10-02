@@ -1,5 +1,5 @@
 # executor.py
-
+import os
 import sys
 
 class MaqHipoExecutor:
@@ -169,11 +169,14 @@ class MaqHipoExecutor:
             sys.exit(1)
 
 def main():
-    if len(sys.argv) != 2:
-        print("Uso: python executor.py <codigo_objeto.txt>")
+    # Modifique aqui para que o caminho do arquivo seja sempre o arquivo "codigo_objeto.txt" na pasta correta
+    codigo_objeto_file = os.path.join(os.path.dirname(__file__), '..', 'Dados', 'codigo_objeto.txt')
+
+    # Verifica se o arquivo existe antes de prosseguir
+    if not os.path.exists(codigo_objeto_file):
+        print(f"Erro: Arquivo '{codigo_objeto_file}' não encontrado.")
         sys.exit(1)
 
-    codigo_objeto_file = sys.argv[1]
     executor = MaqHipoExecutor(codigo_objeto_file)
     # Ative o modo debug definindo 'self.debug' como True
     # executor.debug = True  # Descomente esta linha para ativar o modo debug

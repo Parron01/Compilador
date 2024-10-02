@@ -1,4 +1,5 @@
-from ArvoreSintaticaAbstrata import ProgramNode
+from AnalisadorSintatico.ArvoreSintaticaAbstrata import ProgramNode
+
 
 class AnalisadorSemantico:
     def __init__(self):

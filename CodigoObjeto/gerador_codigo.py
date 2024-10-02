@@ -206,8 +206,16 @@ class CodeGenerator:
 
 # Função para carregar a AST e gerar o código objeto
 def generate_code(pickle_file, output_file='codigo_objeto.txt'):
+    # Corrigir problemas de módulo durante a carga do pickle
+    class CustomUnpickler(pickle.Unpickler):
+        def find_class(self, module, name):
+            if module == 'ArvoreSintaticaAbstrata':
+                module = 'AnalisadorSintatico.ArvoreSintaticaAbstrata'
+            return super().find_class(module, name)
+
     with open(pickle_file, 'rb') as f:
-        ast = pickle.load(f)
+        ast = CustomUnpickler(f).load()
+
     generator = CodeGenerator()
     generator.visit(ast)
     code = generator.generate_code()

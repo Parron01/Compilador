@@ -1,5 +1,5 @@
-import json
 import pickle
+import os
 
 class Node:
     """Classe base para todos os nós da AST."""
@@ -264,6 +264,14 @@ class FunctionCallNode(ExpressionNode):
 
 def carregar_ast(filename='ast_output.pickle'):
     """Carrega a AST de um arquivo binário utilizando pickle."""
-    with open(filename, 'rb') as file:
-        ast = pickle.load(file)  # Carrega a AST do formato binário
+    filepath = os.path.join(os.path.dirname(__file__), '..', 'Dados', filename)
+
+    class CustomUnpickler(pickle.Unpickler):
+        def find_class(self, module, name):
+            if module == 'ArvoreSintaticaAbstrata':
+                module = 'AnalisadorSintatico.ArvoreSintaticaAbstrata'
+            return super().find_class(module, name)
+
+    with open(filepath, 'rb') as file:
+        ast = CustomUnpickler(file).load()
         return ast

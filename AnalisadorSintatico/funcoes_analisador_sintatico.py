@@ -1,6 +1,6 @@
 import inspect
 import pickle
-from ArvoreSintaticaAbstrata import *  # Importando todas as classes necessárias da AST
+from .ArvoreSintaticaAbstrata import *  # Importando todas as classes necessárias da AST
 import json  # Para serializar a AST em JSON
 
 class Parser:
