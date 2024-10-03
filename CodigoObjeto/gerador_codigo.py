@@ -29,48 +29,78 @@ class CodeGenerator:
 
     def visit_ProgramNode(self, node):
         print("Visitando ProgramNode")
-        # Registrar as funções
+        # Registrar o método 'main' com o rótulo 'MAIN'
+        func_label = "MAIN"
+        self.function_table[node.main_class.method_name] = func_label
+
+        # Registrar as outras funções
         for method in node.methods:
             func_label = f"FUNC_{method.method_name}"
             self.function_table[method.method_name] = func_label
-        # Processar os comandos da main (lista de comandos)
+
+        # Processar o método principal
         if node.main_class:
-            print("Processando comandos da classe principal")
+            print("Processando o método principal (main)")
             self.code.append("INPP")
-            # 'main_class' é uma lista de comandos
-            for cmd in node.main_class:
-                self.visit(cmd)
+            self.visit(node.main_class)
             self.code.append("PARA")
         else:
-            print("Aviso: Comandos da classe principal não encontrados na AST.")
+            print("Aviso: Método principal não encontrado na AST.")
+
         # Visitar os métodos adicionais
         for method in node.methods:
             self.visit(method)
 
-    def visit_MainClassNode(self, node):
-        print("Visitando MainClassNode")
-        self.code.append("INPP")
-        self.visit(node.commands)
-        self.code.append("PARA")
-
     def visit_MethodNode(self, node):
         print(f"Visitando MethodNode: {node.method_name}")
-        func_label = self.function_table[node.method_name]
-        self.code.append(f"{func_label}:")
+        func_label = self.function_table.get(node.method_name)
+
+        # Verificar se é o método 'main'
+        is_main = node.method_name == "main"
+
+        if not is_main:
+            self.code.append(f"{func_label}:")
+
         previous_symbol_table = self.symbol_table.copy()
+        previous_address = self.current_address
         self.symbol_table = {}
+        # Não redefinir 'current_address' para evitar conflito de endereços
+        # self.current_address = 0
+
+        # Mapear parâmetros para endereços
         for param in node.params:
             self.symbol_table[param.param_name] = self.current_address
             print(f"Parâmetro '{param.param_name}' mapeado para endereço {self.current_address}")
             self.current_address += 1
+
+        # Desempilhar os argumentos e armazená-los nos parâmetros (apenas se não for 'main')
+        if not is_main:
+            for param in reversed(node.params):
+                param_address = self.symbol_table[param.param_name]
+                self.code.append(f"ARMZ {param_address}")
+
+        # Declarar variáveis locais
         for var_decl in node.var_declarations:
             self.visit(var_decl)
-        self.visit(node.commands)
+
+        # Processar comandos no método
+        for cmd in node.commands:
+            self.visit(cmd)
+
+        # Processar expressão de retorno, se houver
         if node.return_expression:
             print("Processando expressão de retorno")
             self.visit(node.return_expression)
-        self.code.append("RTPR")
+            # Aqui, podemos assumir que o valor de retorno está no topo da pilha
+
+        # Instrução de retorno para métodos que não são 'main'
+        if not is_main:
+            self.code.append("RTPR")
+
+        # Restaurar a tabela de símbolos e o endereço atual
         self.symbol_table = previous_symbol_table
+        self.current_address = previous_address
+
 
     def visit_VarDeclarationNode(self, node):
         print(f"Declarando variáveis: {node.var_names}")
@@ -102,7 +132,7 @@ class CodeGenerator:
             self.code.append(f"CRVL {var_address}")
 
     def visit_BinaryOperationNode(self, node):
-        print(f"Processando operação binária: {node}")
+        print(f"Processando operação binária: {node.operator}")
         self.visit(node.left)
         self.visit(node.right)
         operator_map = {
@@ -165,12 +195,14 @@ class CodeGenerator:
         self.code.append(f"{label_end}:")
 
     def visit_ConditionNode(self, node):
-        print(f"Processando ConditionNode: {node}")
+        print(f"Processando ConditionNode: {node.operator}")
         self.visit(node.left)
         self.visit(node.right)
         operator_map = {
             '>': 'CPMA',
             '<': 'CPME',
+            '>=': 'CPMAIG',
+            '<=': 'CPMEIG',
             '==': 'CPIG',
             '!=': 'CDES'
         }
@@ -190,8 +222,10 @@ class CodeGenerator:
             func_label = self.function_table.get(node.function_name)
             if func_label:
                 print(f"Chamando função definida pelo usuário: {node.function_name}")
+                # Avaliar argumentos e empilhá-los
                 for arg in node.arguments:
                     self.visit(arg)
+                # Chamar a função
                 self.code.append(f"CHPR {func_label}")
             else:
                 print(f"Erro: Função '{node.function_name}' não definida.")
@@ -199,7 +233,7 @@ class CodeGenerator:
     def visit_ReturnNode(self, node):
         print("Processando ReturnNode")
         self.visit(node.expression)
-        # Decisão sobre como tratar o retorno
+        # Decidir como tratar o valor de retorno
 
     def generate_code(self):
         return '\n'.join(self.code)

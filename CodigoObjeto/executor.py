@@ -26,7 +26,7 @@ class MaqHipoExecutor:
     def build_label_table(self):
         """Construir uma tabela de rótulos mapeando-os para seus índices no código objeto."""
         new_codigo_objeto = []
-        for line in self.codigo_objeto:
+        for index, line in enumerate(self.codigo_objeto):
             if line.endswith(':'):
                 label = line[:-1]
                 self.labels[label] = len(new_codigo_objeto)
@@ -93,6 +93,17 @@ class MaqHipoExecutor:
             if self.debug:
                 print(f"Carregando valor da variável (endereço {address}): {value}")
 
+        elif opcode == 'SOMA':
+            if len(self.stack) < 2:
+                print("Erro: Pilha com menos de dois valores durante SOMA.")
+                sys.exit(1)
+            a = self.stack.pop()
+            b = self.stack.pop()
+            result = b + a
+            self.stack.append(result)
+            if self.debug:
+                print(f"Somando: {b} + {a} = {result}")
+
         elif opcode == 'SUBT':
             if len(self.stack) < 2:
                 print("Erro: Pilha com menos de dois valores durante SUBT.")
@@ -104,16 +115,106 @@ class MaqHipoExecutor:
             if self.debug:
                 print(f"Subtraindo: {b} - {a} = {result}")
 
+        elif opcode == 'MULT':
+            if len(self.stack) < 2:
+                print("Erro: Pilha com menos de dois valores durante MULT.")
+                sys.exit(1)
+            a = self.stack.pop()
+            b = self.stack.pop()
+            result = b * a
+            self.stack.append(result)
+            if self.debug:
+                print(f"Multiplicando: {b} * {a} = {result}")
+
+        elif opcode == 'DIVI':
+            if len(self.stack) < 2:
+                print("Erro: Pilha com menos de dois valores durante DIVI.")
+                sys.exit(1)
+            a = self.stack.pop()
+            b = self.stack.pop()
+            if a == 0:
+                print("Erro: Divisão por zero.")
+                sys.exit(1)
+            result = b / a
+            self.stack.append(result)
+            if self.debug:
+                print(f"Dividindo: {b} / {a} = {result}")
+
+        elif opcode == 'INVE':
+            if not self.stack:
+                print("Erro: Pilha vazia durante INVE.")
+                sys.exit(1)
+            a = self.stack.pop()
+            result = -a
+            self.stack.append(result)
+            if self.debug:
+                print(f"Invertendo sinal: -({a}) = {result}")
+
+        elif opcode == 'CPIG':
+            if len(self.stack) < 2:
+                print("Erro: Pilha com menos de dois valores durante CPIG.")
+                sys.exit(1)
+            a = self.stack.pop()
+            b = self.stack.pop()
+            condition = 1 if b == a else 0
+            self.stack.append(condition)
+            if self.debug:
+                print(f"Comparação CPIG: {b} == {a} = {bool(condition)}")
+
         elif opcode == 'CPMA':
             if len(self.stack) < 2:
                 print("Erro: Pilha com menos de dois valores durante CPMA.")
                 sys.exit(1)
             a = self.stack.pop()
             b = self.stack.pop()
-            condition = b > a
-            self.stack.append(1 if condition else 0)
+            condition = 1 if b > a else 0
+            self.stack.append(condition)
             if self.debug:
-                print(f"Comparação CPMA: {b} > {a} = {condition}")
+                print(f"Comparação CPMA: {b} > {a} = {bool(condition)}")
+
+        elif opcode == 'CPME':
+            if len(self.stack) < 2:
+                print("Erro: Pilha com menos de dois valores durante CPME.")
+                sys.exit(1)
+            a = self.stack.pop()
+            b = self.stack.pop()
+            condition = 1 if b < a else 0
+            self.stack.append(condition)
+            if self.debug:
+                print(f"Comparação CPME: {b} < {a} = {bool(condition)}")
+
+        elif opcode == 'CDES':
+            if len(self.stack) < 2:
+                print("Erro: Pilha com menos de dois valores durante CDES.")
+                sys.exit(1)
+            a = self.stack.pop()
+            b = self.stack.pop()
+            condition = 1 if b != a else 0
+            self.stack.append(condition)
+            if self.debug:
+                print(f"Comparação CDES: {b} != {a} = {bool(condition)}")
+
+        elif opcode == 'CPMEIG':
+            if len(self.stack) < 2:
+                print("Erro: Pilha com menos de dois valores durante CPMEIG.")
+                sys.exit(1)
+            a = self.stack.pop()
+            b = self.stack.pop()
+            condition = 1 if b <= a else 0
+            self.stack.append(condition)
+            if self.debug:
+                print(f"Comparação CPMEIG: {b} <= {a} = {bool(condition)}")
+
+        elif opcode == 'CPMAIG':
+            if len(self.stack) < 2:
+                print("Erro: Pilha com menos de dois valores durante CPMAIG.")
+                sys.exit(1)
+            a = self.stack.pop()
+            b = self.stack.pop()
+            condition = 1 if b >= a else 0
+            self.stack.append(condition)
+            if self.debug:
+                print(f"Comparação CPMAIG: {b} >= {a} = {bool(condition)}")
 
         elif opcode == 'DSVF':
             label = parts[1]
@@ -169,18 +270,18 @@ class MaqHipoExecutor:
             sys.exit(1)
 
 def main():
-    # Modifique aqui para que o caminho do arquivo seja sempre o arquivo "codigo_objeto.txt" na pasta correta
-    codigo_objeto_file = os.path.join(os.path.dirname(__file__), '..', 'Dados', 'codigo_objeto.txt')
+        # Modifique aqui para que o caminho do arquivo seja sempre o arquivo "codigo_objeto.txt" na pasta correta
+        codigo_objeto_file = os.path.join(os.path.dirname(__file__), '..', 'Dados', 'codigo_objeto.txt')
 
-    # Verifica se o arquivo existe antes de prosseguir
-    if not os.path.exists(codigo_objeto_file):
-        print(f"Erro: Arquivo '{codigo_objeto_file}' não encontrado.")
-        sys.exit(1)
+        # Verifica se o arquivo existe antes de prosseguir
+        if not os.path.exists(codigo_objeto_file):
+            print(f"Erro: Arquivo '{codigo_objeto_file}' não encontrado.")
+            sys.exit(1)
 
-    executor = MaqHipoExecutor(codigo_objeto_file)
-    # Ative o modo debug definindo 'self.debug' como True
-    # executor.debug = True  # Descomente esta linha para ativar o modo debug
-    executor.execute()
+        executor = MaqHipoExecutor(codigo_objeto_file)
+        # Ative o modo debug definindo 'self.debug' como True
+        # executor.debug = True  # Descomente esta linha para ativar o modo debug
+        executor.execute()
 
 if __name__ == "__main__":
-    main()
+        main()

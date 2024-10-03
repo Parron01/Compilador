@@ -19,6 +19,11 @@ class Parser:
             with open(filename, 'wb') as file:
                 pickle.dump(self.ast, file)  # Salva a AST no formato binário com pickle
                 print(f"AST salva com sucesso no arquivo {filename}")
+                # Códigos para impressão da arvore criada, basta descomentar
+                # ast_dict = self.ast.to_dict()
+                # ast_json = json.dumps(ast_dict, indent=4, ensure_ascii=False)
+                # print("AST Gerada:")
+                # print(ast_json)
         else:
             print("Erro: AST não foi gerada corretamente.")
 
@@ -53,77 +58,84 @@ class Parser:
 
 
     def parse_PROG(self):
-        """Funcao para o nao-terminal PROG."""
+        """Função para o não-terminal PROG."""
         self.funcao_atual = 'parse_PROG'
-        print(f'\nIniciou a Funcao: {self.funcao_atual}')
-        
-        # Montando a AST
+        print(f'\nIniciou a Função: {self.funcao_atual}')
         self.match('public')
         self.match('class')
-        class_name = self.match('id')  # Armazenar o nome real da classe
+        class_name = self.match('id')  # Captura o nome da classe
         self.match('{')
-
-        # Parse da main
         self.match('public')
         self.match('static')
         self.match('void')
-        self.match('main')
+        method_name = self.match('main')  # Nome do método principal
         self.match('(')
         self.match('String')
         self.match('[')
         self.match(']')
-        main_arg = self.match('id')  # Armazenar o argumento real
+        param_name = self.match('id')  # Nome do parâmetro do main
         self.match(')')
         self.match('{')
-
+        
+        # Analisar declarações de variáveis no main
+        var_declarations = self.parse_DC()
+        
+        # Analisar comandos no main
         main_commands = self.parse_CMDS()
         self.match('}')
         
-        # Parse dos métodos (pode retornar None, então devemos inicializar como uma lista vazia)
-        methods = []
-        metodo = self.parse_METODO()
-        if metodo:  # Se um método for encontrado, adicione à lista
-            methods.append(metodo)
+        # Criar o nó do método principal
+        return_type = TypeNode('void')
+        param_type = TypeNode('String[]')
+        params = [ParamNode(param_type, param_name)]
+        return_expression = None  # O main não possui expressão de retorno
 
+        main_method_node = MethodNode(return_type, method_name, params, var_declarations, main_commands, return_expression)
+        
+        # Coletar outros métodos
+        methods = []
+        while self.token_atual[1] == 'public':
+            method_node = self.parse_METODO()
+            if method_node:
+                methods.append(method_node)
+        
         self.match('}')
-        
-        # Criação do nó da AST ProgramNode
-        self.ast = ProgramNode(main_class=main_commands, methods=methods if methods else [])
-        
-        print(f'Funcao: parse_PROG, finalizada.\n')
+        print(f'Função: parse_PROG, finalizada.\n')
+
+        # Criar o nó raiz do programa
+        self.ast = ProgramNode(main_method_node, methods)
+
 
     def parse_METODO(self):
         """Função para o não-terminal METODO."""
         self.funcao_atual = 'parse_METODO'
         print(f'\nIniciou a Função: {self.funcao_atual}')
         
-        token_type, token_value = self.token_atual  # Desempacota o tipo e valor do token atual
+        token_type, token_value = self.token_atual
         
-        # Verifica se é o início de um método
-        if token_value == 'public':  # Compara o valor do token, pois 'public' é uma palavra reservada
+        if token_value == 'public':
             self.match('public')
             self.match('static')
-            return_type = self.parse_TIPO()  # Tipo de retorno
-            method_name = self.match('id')  # Nome real do método
+            return_type = self.parse_TIPO()
+            method_name = self.match('id')
             self.match('(')
             params = self.parse_PARAMS()
             self.match(')')
             self.match('{')
             
-            var_declarations = self.parse_DC()  # Declarações de variáveis
-            commands = self.parse_CMDS()  # Comandos
+            var_declarations = self.parse_DC()
+            commands = self.parse_CMDS()
             self.match('return')
-            return_expression = self.parse_EXPRESSAO()  # Expressão de retorno
+            return_expression = self.parse_EXPRESSAO()
             self.match(';')
             self.match('}')
             
-            # Criação do nó MethodNode
+            print(f'Função: parse_METODO, finalizada.\n')
             return MethodNode(return_type, method_name, params, var_declarations, commands, return_expression)
-        elif token_value == '}':  # Caminho nulo (λ)
+        elif token_value == '}':
             return None
         else:
-            self.error(f"Erro de sintaxe em METODO: \"{self.token_atual}\" não correspondido")
-        print(f'Função: parse_METODO, finalizada.\n')
+            self.error(f"Erro de sintaxe em METODO: \"{token_value}\" não correspondido")
 
 
 
@@ -180,11 +192,12 @@ class Parser:
         print(f'\nIniciou a Funcao: {self.funcao_atual}')
         
         mais_params = []
-        
-        if self.token_atual == ',':
+        token_type, token_value = self.token_atual  # Adicionado
+
+        if token_value == ',':
             self.match(',')
             mais_params += self.parse_PARAMS()  # Adiciona os próximos parâmetros
-        elif self.token_atual == ')':  # Caminho nulo (λ)
+        elif token_value == ')':  # Caminho nulo (λ)
             return mais_params  # Nenhum parâmetro adicional
         else:
             self.error(f"Erro de sintaxe em MAIS_PARAMS: \"{self.token_atual}\" nao correspondido")
@@ -197,38 +210,16 @@ class Parser:
         self.funcao_atual = 'parse_DC'
         print(f'\nIniciou a Funcao: {self.funcao_atual}')
         
-        var_declarations = []  # Lista de declarações de variáveis
+        declarations = []
+        token_type, token_value = self.token_atual
         
-        token_type, token_value = self.token_atual  # Captura o tipo e valor do token atual
-        
-        if token_value == 'double':  # Verifica se o valor do token é 'double'
-            var_declarations.append(self.parse_VAR())  # Adiciona declaração de variável
-            var_declarations.extend(self.parse_MAIS_DC())  # Adiciona mais declarações, se houver
-        elif token_value in ['}', 'return']:  # Caminho nulo (λ) - se encontrar '}' ou 'return'
-            return var_declarations  # Retorna a lista de declarações vazia ou preenchida
-        else:
-            self.error(f"Erro de sintaxe em DC: \"{self.token_atual}\" nao correspondido")
+        while token_value == 'double':
+            var_decl_node = self.parse_VAR()
+            declarations.append(var_decl_node)
+            token_type, token_value = self.token_atual  # Atualiza o token atual
         
         print(f'Funcao: parse_DC, finalizada.\n')
-        return var_declarations  # Retorna as declarações de variáveis
-
-
-
-    def parse_MAIS_DC(self):
-        """Funcao para o nao-terminal MAIS_DC."""
-        self.funcao_atual = 'parse_MAIS_DC'
-        
-        declarations = []
-        
-        if self.token_atual == 'double':
-            declarations += self.parse_DC()  # Adiciona mais declarações
-        elif self.token_atual != 'double':  # Produção nula (λ)
-            return declarations
-        else:
-            self.error(f"Erro de sintaxe em MAIS_DC: \"{self.token_atual}\" nao correspondido")
-        
-        print(f'Funcao: parse_MAIS_DC, finalizada.\n')
-        return declarations
+        return declarations  # Retorna a lista de declarações (pode ser vazia)
 
 
     def parse_VAR(self):
@@ -285,36 +276,67 @@ class Parser:
 
 
     def parse_CMDS(self):
-        """Funcao para o nao-terminal CMDS."""
+        """Função para o não-terminal CMDS."""
         self.funcao_atual = 'parse_CMDS'
-        print(f'\nIniciou a Funcao: {self.funcao_atual}')
+        print(f'\nIniciou a Função: {self.funcao_atual}')
         
         commands = []
         
-        # Captura o tipo e valor do token atual
+        while True:
+            token_type, token_value = self.token_atual
+            
+            if token_value == 'System.out.println' or token_type == 'id':
+                cmd_node = self.parse_CMD()
+                commands.append(cmd_node)
+                if self.token_atual[1] == ';':
+                    self.match(';')
+                else:
+                    self.error(f"Erro de sintaxe em CMDS: esperado ';', mas encontrado '{self.token_atual[1]}'")
+            elif token_value in ['if', 'while']:
+                cmd_cond_node = self.parse_CMD_COND()
+                commands.append(cmd_cond_node)
+            elif token_value == 'double':
+                var_decl_node = self.parse_VAR()
+                commands.append(var_decl_node)
+            elif token_value in ['}', 'return']:
+                break  # Fim dos comandos
+            else:
+                self.error(f"Erro de sintaxe em CMDS: comando não reconhecido '{token_value}'")
+        
+        print(f'Função: parse_CMDS, finalizada.\n')
+        return commands
+    
+    def parse_CMD_COND(self):
+        """Funcao para o nao-terminal CMD_COND."""
+        self.funcao_atual = 'parse_CMD_COND'
+        print(f'\nIniciou a Funcao: {self.funcao_atual}')
+        
         token_type, token_value = self.token_atual
         
-        # Verifica se é um comando ou uma declaração de variável
-        if token_value in ['if', 'while', 'System.out.println'] or token_type == 'id':
-            cmd_node = self.parse_CMD()
-            commands.append(cmd_node)
-            commands += self.parse_MAIS_CMDS()  # Adiciona comandos adicionais
-        
-        # Verifica se é uma declaração de variável (por exemplo, 'double')
-        elif token_value in ['double']:
-            var_decl_node = self.parse_VAR()
-            commands.append(var_decl_node)
-            commands += self.parse_MAIS_CMDS()
-        
-        # Caminho nulo (λ) - fim de comandos
-        elif token_value in ['}', 'return']:
-            return commands
-        
+        if token_value == 'if':
+            self.match('if')
+            self.match('(')
+            condition = self.parse_CONDICAO()
+            self.match(')')
+            self.match('{')
+            if_commands = self.parse_CMDS()
+            self.match('}')
+            else_commands = self.parse_PFALSA()
+            print(f'Funcao: parse_CMD_COND, finalizada.\n')
+            return IfNode(condition, if_commands, else_commands)
+        elif token_value == 'while':
+            self.match('while')
+            self.match('(')
+            condition = self.parse_CONDICAO()
+            self.match(')')
+            self.match('{')
+            while_commands = self.parse_CMDS()
+            self.match('}')
+            print(f'Funcao: parse_CMD_COND, finalizada.\n')
+            return WhileNode(condition, while_commands)
         else:
-            self.error(f"Erro de sintaxe em CMDS: esperado comando ou declaração de variável, mas encontrado \"{self.token_atual}\"")
-        
-        print(f'Funcao: parse_CMDS, finalizada.\n')
-        return commands
+            self.error(f"Erro de sintaxe em CMD_COND: esperado 'if' ou 'while', mas encontrado '{token_value}'")
+
 
     def parse_MAIS_CMDS(self):
         """Funcao para o nao-terminal MAIS_CMDS."""
@@ -346,58 +368,22 @@ class Parser:
         """Funcao para o nao-terminal CMD."""
         self.funcao_atual = 'parse_CMD'
         print(f'\nIniciou a Funcao: {self.funcao_atual}')
-        token_type, token_value = self.token_atual  # Captura o tipo e valor do token atual
+        token_type, token_value = self.token_atual
         
-        if token_type == 'if':
-            self.match('if')
-            self.match('(')
-            condition = self.parse_CONDICAO()  # Condição do 'if'
-            self.match(')')
-            self.match('{')
-            if_commands = self.parse_CMDS()  # Comandos dentro do 'if'
-            self.match('}')
-            else_commands = self.parse_PFALSA()  # Comandos do 'else'
-            return IfNode(condition, if_commands, else_commands)  # Criação do nó 'IfNode'
-
-        elif token_type == 'while':
-            self.match('while')
-            self.match('(')
-            condition = self.parse_CONDICAO()  # Condição do 'while'
-            self.match(')')
-            self.match('{')
-            commands = self.parse_CMDS()  # Comandos dentro do 'while'
-            self.match('}')
-            return WhileNode(condition, commands)  # Criação do nó 'WhileNode'
-
-        elif token_type == 'System.out.println':
+        if token_value == 'System.out.println':
             self.match('System.out.println')
             self.match('(')
-            expression = self.parse_EXPRESSAO()  # Expressão a ser impressa
+            expression = self.parse_EXPRESSAO()
             self.match(')')
-            self.match(';')
-            return PrintNode(expression)  # Criação do nó 'PrintNode'
-
+            print(f'Funcao: parse_CMD, finalizada.\n')
+            return PrintNode(expression)
         elif token_type == 'id':
             var_name = self.match('id')
-            next_token_type, next_token_value = self.token_atual
-            if next_token_value == '=':
-                self.match('=')
-                expr_node = self.parse_EXP_IDENT()
-                self.match(';')
-                return AssignmentNode(var_name, expr_node)
-            elif next_token_value == '(':
-                self.match('(')
-                arguments = self.parse_LISTA_ARG()
-                self.match(')')
-                self.match(';')
-                return FunctionCallNode(var_name, arguments)
-            else:
-                self.error(f"Erro de sintaxe em CMD: esperado '=' ou '(', mas encontrado '{next_token_value}'")
-        
+            rest_node = self.parse_RESTO_IDENT(var_name)
+            print(f'Funcao: parse_CMD, finalizada.\n')
+            return rest_node
         else:
-            self.error("Erro de sintaxe em CMD")
-        
-        print(f'Funcao: parse_CMD, finalizada.\n')
+            self.error(f"Erro de sintaxe em CMD: esperado 'System.out.println' ou 'id', mas encontrado '{token_value}'")
 
     def parse_PFALSA(self):
         """Funcao para o nao-terminal PFALSA."""
@@ -426,41 +412,26 @@ class Parser:
         return None
 
 
-    def parse_RESTO_IDENT(self):
+    def parse_RESTO_IDENT(self, var_name):
         """Função para o não-terminal RESTO_IDENT."""
         self.funcao_atual = 'parse_RESTO_IDENT'
         print(f'\nIniciou a Função: {self.funcao_atual}')
         
-        token_type, token_value = self.token_atual  # Captura o tipo e valor do token atual
+        token_type, token_value = self.token_atual
         
-        # Tratamento de atribuição (operador '='):
         if token_value == '=':
-            self.match('=')  # Verifica o operador de atribuição
-            expr_node = self.parse_EXP_IDENT()  # Captura a expressão após o '='
+            self.match('=')
+            expr_node = self.parse_EXP_IDENT()
             print(f'Função: parse_RESTO_IDENT, finalizada.\n')
-            return expr_node  # Retorna a expressão; o AssignmentNode será criado em parse_CMD()
-        
-        # Tratamento de chamada de função (parênteses '('):
+            return AssignmentNode(var_name, expr_node)
         elif token_value == '(':
-            self.match('(')  # Consome o parêntese de abertura
-            
-            # Captura a lista de argumentos
+            self.match('(')
             arguments = self.parse_LISTA_ARG()
-            
-            # Verifica o parêntese de fechamento
-            token_type, token_value = self.token_atual  # Atualiza o token atual
-            if token_value == ')':
-                self.match(')')
-            else:
-                self.error(f"Erro de sintaxe: esperado ')' mas encontrado '{token_value}' no token {self.contador_token}")
-            
-            # Retorna o nó de chamada de função com o nome correto
-            function_call_node = FunctionCallNode(self.last_matched_id, arguments)
+            self.match(')')
             print(f'Função: parse_RESTO_IDENT, finalizada.\n')
-            return function_call_node
-        
+            return FunctionCallNode(var_name, arguments)
         else:
-            self.error(f"Erro de sintaxe em RESTO_IDENT: \"{self.token_atual}\" não correspondido")
+            self.error(f"Erro de sintaxe em RESTO_IDENT: esperado '=' ou '(', mas encontrado \"{token_value}\"")
         
         print(f'Função: parse_RESTO_IDENT, finalizada.\n')
 
@@ -472,10 +443,15 @@ class Parser:
         
         arguments = []
         
-        if self.token_atual == 'id':
-            arguments.append(self.parse_ARGUMENTOS())  # Adiciona os argumentos à lista
-        elif self.token_atual == ')':  # Caminho nulo (λ)
+        token_type, token_value = self.token_atual
+
+        if token_type == 'id':
+            arguments = self.parse_ARGUMENTOS()  # parse_ARGUMENTOS retorna uma lista de argumentos
+        elif token_value == ')':  # Caminho nulo (λ)
+            print(f'Funcao: parse_LISTA_ARG, finalizada (Produção Nula).\n')
             return arguments
+        else:
+            self.error(f"Erro de sintaxe em LISTA_ARG: esperado 'id' ou ')', mas encontrado '{token_value}'")
         
         print(f'Funcao: parse_LISTA_ARG, finalizada.\n')
         return arguments
@@ -486,11 +462,14 @@ class Parser:
         self.funcao_atual = 'parse_ARGUMENTOS'
         print(f'\nIniciou a Funcao: {self.funcao_atual}')
         
+        arguments = []
         argument = VariableNode(self.match('id'))  # Captura o nome real do argumento
-        self.parse_MAIS_IDENT()  # Processa argumentos adicionais
+        arguments.append(argument)
+        additional_arguments = self.parse_MAIS_IDENT()  # Processa argumentos adicionais
+        arguments.extend(additional_arguments)
         
         print(f'Funcao: parse_ARGUMENTOS, finalizada.\n')
-        return argument
+        return arguments
 
 
 
@@ -501,11 +480,16 @@ class Parser:
         
         additional_arguments = []
         
-        if self.token_atual == ',':
+        token_type, token_value = self.token_atual
+        if token_value == ',':
             self.match(',')
-            additional_arguments.append(self.parse_ARGUMENTOS())  # Adiciona argumentos adicionais
-        elif self.token_atual == ')':  # Caminho nulo (λ)
+            arguments = self.parse_ARGUMENTOS()  # parse_ARGUMENTOS retorna uma lista
+            additional_arguments.extend(arguments)
+        elif token_value == ')':  # Caminho nulo (λ)
+            print(f'Funcao: parse_MAIS_IDENT, finalizada (Produção Nula).\n')
             return additional_arguments
+        else:
+            self.error(f"Erro de sintaxe em MAIS_IDENT: esperado ',' ou ')', mas encontrado '{token_value}'")
         
         print(f'Funcao: parse_MAIS_IDENT, finalizada.\n')
         return additional_arguments
@@ -516,23 +500,15 @@ class Parser:
         self.funcao_atual = 'parse_EXP_IDENT'
         print(f'\nIniciou a Funcao: {self.funcao_atual}')
 
-        token_type, token_value = self.token_atual  # Captura o tipo e valor do token atual
-
-        # Verifica se é um identificador, número ou expressão entre parênteses
-        if token_type == 'id' or token_type == 'num' or token_value == '(':
-            expr_node = self.parse_EXPRESSAO()  # Retorna o nó da expressão
+        if self.token_atual[1] == 'lerDouble()':
+            self.match('lerDouble()')  # Consome o token 'lerDouble()'
+            print(f'Funcao: parse_EXP_IDENT, finalizada.\n')
+            return FunctionCallNode('lerDouble', [])
+        else:
+            expr_node = self.parse_EXPRESSAO()
+            print(f'Funcao: parse_EXP_IDENT, finalizada.\n')
             return expr_node
 
-        # Verifica a chamada da função específica 'lerDouble()'
-        elif token_value == 'lerDouble()':
-            self.match('lerDouble()')
-            return FunctionCallNode('lerDouble', [])  # Cria o nó de chamada da função 'lerDouble'
-
-        # Tratamento de erro em caso de token não reconhecido
-        else:
-            self.error(f"Erro de sintaxe em EXP_IDENT: \"{token_value}\" não correspondido no token {self.contador_token}")
-        
-        print(f'Funcao: parse_EXP_IDENT, finalizada.\n')
 
 
 
@@ -616,7 +592,7 @@ class Parser:
 
         # Verifica se o operador unário é um sinal de menos '-'
         if token_value == '-':
-            self.match('Operador')  # Consome o operador unário '-'
+            self.match('-')  # Consome o operador unário '-'
             print(f'Funcao: parse_OP_UN, finalizada.\n')
             return '-'  # Retorna o operador unário
 
@@ -627,7 +603,7 @@ class Parser:
 
         # Em caso de erro de sintaxe
         else:
-            self.error(f"Erro de sintaxe em OP_UN: esperado '-' ou expressão válida, mas encontrado \"{self.token_atual}\"")
+            self.error(f"Erro de sintaxe em OP_UN: esperado '-' ou expressão válida, mas encontrado \"{token_value}\"")
 
         print(f'Funcao: parse_OP_UN, finalizada.\n')
 
@@ -745,11 +721,13 @@ class Parser:
         self.funcao_atual = 'parse_OP_MUL'
         print(f'\nIniciou a Funcao: {self.funcao_atual}')
 
-        if self.token_atual in ['*', '/']:
-            operator = self.token_atual
-            self.match(operator)
+        token_type, token_value = self.token_atual  # Desempacota o token atual
+
+        if token_value in ['*', '/']:
+            operator = token_value  # Captura o valor do operador
+            self.match(token_value)  # Consome o operador multiplicativo
             print(f'Funcao: parse_OP_MUL, finalizada.\n')
             return operator  # Retorna o operador multiplicativo
         else:
-            self.error(f"Erro de sintaxe em OP_MUL: \"{self.token_atual}\" nao correspondido")
+            self.error(f"Erro de sintaxe em OP_MUL: esperado '*' ou '/', mas encontrado \"{token_value}\" do tipo \"{token_type}\"")
 

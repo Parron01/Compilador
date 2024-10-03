@@ -11,6 +11,8 @@ class AnalisadorSemantico:
         self.erros_semanticos = []  # Lista para armazenar mensagens de erro
 
     def visitar(self, node):
+        if node is None:
+            return  # Não faz nada se o nó for None
         if isinstance(node, list):
             for subnode in node:
                 self.visitar(subnode)
@@ -38,7 +40,6 @@ class AnalisadorSemantico:
         for metodo in node.methods:
             self.visitar(metodo)
 
-
     def visitar_MethodNode(self, node):
         print(f"Analisando Método: {node.method_name}")
         # Inicializa o escopo do método
@@ -51,18 +52,23 @@ class AnalisadorSemantico:
         # Analisa os comandos no método
         for comando in node.commands:
             self.visitar(comando)
-        # Analisa a expressão de retorno
-        self.visitar(node.return_expression)
+        # Analisa a expressão de retorno, se houver
+        if node.return_expression is not None:
+            self.visitar(node.return_expression)
+
+    def visitar_ParamNode(self, node):
+        param_type = self.visitar(node.param_type)
+        param_name = node.param_name
+        # Adiciona o parâmetro ao escopo atual
+        self.escopo_atual[param_name] = param_type
+        print(f"Parâmetro '{param_name}' declarado com o tipo '{param_type}'")
 
     def visitar_VarDeclarationNode(self, node):
         # Registra as variáveis no escopo atual (local ou global)
         var_type = self.visitar(node.var_type)
         print(f"Variáveis declaradas: {node.var_names} do tipo {var_type}")
         for var_name in node.var_names:
-            if isinstance(node, ProgramNode):
-                self.escopo_variaveis[var_name] = var_type  # Variável global
-            else:
-                self.escopo_atual[var_name] = var_type  # Variável local no método
+            self.escopo_atual[var_name] = var_type  # Variável local no método
 
     def visitar_TypeNode(self, node):
         # Retorna o nome do tipo
@@ -88,19 +94,24 @@ class AnalisadorSemantico:
             print(mensagem_erro)
             self.erros_semanticos.append(mensagem_erro)
 
-
     def visitar_NumberNode(self, node):
         print(f"Verificando número: {node.value}")
+        return 'double'  # Supondo que todos os números são do tipo 'double'
 
     def visitar_VariableNode(self, node):
-        if node.var_name not in self.escopo_atual and node.var_name not in self.escopo_variaveis:
+        if node.var_name in self.escopo_atual:
+            var_type = self.escopo_atual[node.var_name]
+            print(f"Verificando variável: {node.var_name}")
+            return var_type
+        elif node.var_name in self.escopo_variaveis:
+            var_type = self.escopo_variaveis[node.var_name]
+            print(f"Verificando variável global: {node.var_name}")
+            return var_type
+        else:
             mensagem_erro = f"Erro semântico: Variável '{node.var_name}' não foi declarada."
             print(mensagem_erro)
             self.erros_semanticos.append(mensagem_erro)
             return None
-        else:
-            print(f"Verificando variável: {node.var_name}")
-            return self.escopo_atual.get(node.var_name, self.escopo_variaveis.get(node.var_name))
 
     def visitar_BinaryOperationNode(self, node):
         print(f"Operação binária: {node.operator}")
@@ -111,7 +122,6 @@ class AnalisadorSemantico:
             print(mensagem_erro)
             self.erros_semanticos.append(mensagem_erro)
         return left_type  # Assume que o tipo resultante é o mesmo
-
 
     def visitar_ConditionNode(self, node):
         print(f"Condição: {node.operator}")
@@ -146,8 +156,14 @@ class AnalisadorSemantico:
                 print(mensagem_erro)
                 self.erros_semanticos.append(mensagem_erro)
             else:
-                # Opcional: Verificar tipos dos argumentos
-                pass
+                # Verificar tipos dos argumentos
+                for arg, param in zip(node.arguments, expected_params):
+                    arg_type = self.visitar(arg)
+                    param_type = self.visitar(param.param_type)
+                    if arg_type != param_type:
+                        mensagem_erro = f"Erro semântico: Tipo do argumento '{arg_type}' não corresponde ao tipo do parâmetro '{param_type}' na função '{node.function_name}'."
+                        print(mensagem_erro)
+                        self.erros_semanticos.append(mensagem_erro)
             func_return_type = func_info['return_type']
             # Visitar os argumentos
             for arg in node.arguments:
