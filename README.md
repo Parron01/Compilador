@@ -19,6 +19,7 @@ O projeto está organizado nos seguintes diretórios:
 ## Pré-requisitos
 
 Para executar este projeto, você precisa ter o Python instalado em sua máquina. A versão mínima recomendada é Python 3.6 ou superior.
+- Certifique-se de que o arquivo `Dados/codigo.txt` contém o código-fonte que você deseja compilar.
 
 ### Instalação
 
@@ -47,7 +48,9 @@ Para executar todas as etapas do compilador de uma só vez, utilize o script `ma
 python main_compilador.py
 ```
 
-Este script executa as etapas de análise léxica, sintática, semântica, geração de código objeto e execução do código gerado.
+Este script executa as etapas de análise léxica, sintática, semântica, geração de código objeto.
+
+Para executar o código objeto voce precisará executar o script `executor.py`
 
 ### Opção 2: Executar cada etapa individualmente
 
